@@ -2,38 +2,20 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"net"
+	"github.com/Torii/cmd/server"
+	"github.com/Torii/internals/tunnel"
+	"os"
 )
 
-func handleConnection(conn net.Conn) {
-	defer conn.Close()
-
-	buffer := make([]byte, 1024)
-
-	n, err := conn.Read(buffer)
-	if err != nil {
-		log.Println(err)
-	}
-
-	fmt.Fprintf(conn, "Echo - %s", string(buffer[:n]))
-
-}
-
 func main() {
-	ln, err := net.Listen("tcp", "localhost:8080")
+	manager := tunnel.NewManager()
+	fmt.Println("Tunnel Manager started")
+
+	// Start the server
+	err := server.StartServer(":9000", manager)
 	if err != nil {
-		log.Fatalln(err)
-	}
-
-	defer ln.Close()
-
-	for {
-		conn, err := ln.Accept()
-		if err != nil {
-			log.Println(err)
-		}
-
-		go handleConnection(conn)
+		fmt.Println("Server error:", err)
+		os.Exit(1)
 	}
 }
+
