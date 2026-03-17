@@ -1,29 +1,23 @@
 package main
 
 import (
-	"fmt"
+	"io"
 	"log"
 	"net"
 )
 
 func main() {
-	//Creates TCP socket
-	conn, err := net.Dial("tcp", "localhost:9000")
+
+	serverConn, err := net.Dial("tcp", "localhost:9000")
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatal(err)
 	}
 
-	//Sends message
-	fmt.Fprintf(conn, "Hello")
-
-	//Read response
-	buffer := make([]byte, 1024)
-	n, err := conn.Read(buffer)
+	localConn, err := net.Dial("tcp", "localhost:4321")
 	if err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 
-	fmt.Println(string(buffer[:n]))
-
-	conn.Close()
+	go io.Copy(localConn, serverConn)
+	io.Copy(serverConn, localConn)
 }

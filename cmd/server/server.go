@@ -8,7 +8,8 @@ import (
 	"github.com/Torii/internals/tunnel"
 )
 
-func StartServer(adrr string, manager *tunnel.Manager) error {
+// Starts Torii server
+func StartClientServer(adrr string, manager *tunnel.Manager) error {
 	ln, err := net.Listen("tcp", adrr)
 	if err != nil {
 		return err
@@ -16,46 +17,71 @@ func StartServer(adrr string, manager *tunnel.Manager) error {
 
 	defer ln.Close()
 
-	fmt.Println("Server listening on: ", adrr)
+	fmt.Println("Client Server listening on: ", adrr)
 
 	for {
-		conn, err := ln.Accept()
+		clientConn, err := ln.Accept()
 		if err != nil {
 			fmt.Println("Failed accepting connection: ", err)
 			continue
 		}
 
-		go handleConnection(conn, manager)
-
+		go handleClientConn(clientConn, manager)
 	}
 }
 
-func handleConnection(conn net.Conn, manager *tunnel.Manager) {
-	id := tunnel.GenerateID()
-
-	t := &tunnel.Tunnel{
-		ID:   id,
-		Conn: conn,
+func StartPublicServer(adrr string, manager *tunnel.Manager) error {
+	ln, err := net.Listen("tcp", adrr)
+	if err != nil {
+		return err
 	}
 
-	manager.Register(t)
+	defer ln.Close()
+
+	fmt.Println("Public server listening on: ", adrr)
+
+	for {
+		userConn, err := ln.Accept()
+		if err != nil {
+			fmt.Println("Failed accepting connection: ", err)
+			continue
+		}
+
+		go handlePublicConn(userConn, manager)
+	}
+}
+
+func handleClientConn(clientConn net.Conn, manager *tunnel.Manager) {
+	id := tunnel.GenerateID()
+
+	ct := &tunnel.Tunnel{
+		ID:   id,
+		Conn: clientConn,
+	}
+
+	manager.Register(ct)
 	fmt.Println("Tunnel created successfully: ", id)
 
 	defer func() {
 		manager.Remove(id)
-		conn.Close()
-		fmt.Println("Tunnel closed successfully: ", id)
+		clientConn.Close()
+		fmt.Println("Tunnel created successfully: ", id)
 	}()
 
-	buf := make([]byte, 4096)
-	for {
-		n, err := conn.Read(buf)
-		if err != nil {
-			if err != io.EOF {
-				fmt.Println("Connection error: ", err)
-			}
-			break
-		}
-		conn.Write(buf[:n])
+	select {}
+}
+
+func handlePublicConn(userConn net.Conn, manager *tunnel.Manager) {
+	t := manager.GetFirst()
+
+	if t == nil {
+		fmt.Println("No tunnels available")
+		userConn.Close()
+		return
 	}
+
+	tunnelConn := t.Conn
+
+	go io.Copy(tunnelConn, userConn)
+	go io.Copy(userConn, tunnelConn)
 }

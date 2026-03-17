@@ -30,6 +30,16 @@ func (m *Manager) Get(id string) *Tunnel {
 	return m.tunnels[id]
 }
 
+/*Manager function: get the first tunnel pointer*/
+func (m *Manager) GetFirst() *Tunnel {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, t := range m.tunnels {
+		return t
+	}
+	return nil
+}
+
 /*Manager function: Remove a specific tunnel from the
 * manager by its id*/
 func (m *Manager) Remove(id string) {
